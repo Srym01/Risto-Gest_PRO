@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
+    
+    <link rel="manifest" href='data:application/manifest+json;utf8,{"name":"RistoGest","short_name":"RistoGest","start_url":".","display":"standalone","background_color":"#1e293b","theme_color":"#1e293b","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/1046/1046747.png","sizes":"512x512","type":"image/png"}]}'>
+
     <title>Gestione Prenotazioni Ristorante</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -30,12 +34,12 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
         
         body {
-            background-color: var(--primary); /* Colore base, verrà sovrascritto dal JS */
+            background-color: var(--primary);
             margin: 0;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             color: var(--primary);
             overscroll-behavior-y: none;
-            transition: background-color 0.5s ease; /* Transizione fluida del colore */
+            transition: background-color 0.5s ease;
         }
         
         header {
@@ -94,7 +98,7 @@
         .agenda-row {
             display: flex; background: var(--white); border-radius: var(--radius-md); 
             box-shadow: 0 2px 8px rgba(0,0,0,0.15); overflow: hidden; cursor: pointer; transition: all 0.2s;
-            border: 1px solid transparent;
+            border: 1px solid transparent; min-height: 80px;
         }
         .agenda-row:active { transform: scale(0.98); background-color: #f8fafc; }
         
@@ -113,16 +117,20 @@
         .festivo .num, .festivo .day { color: var(--danger); }
         .agenda-row.today.festivo .agenda-date .num, .agenda-row.today.festivo .agenda-date .day { color: white; } 
         
-        .agenda-content { flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-        .agenda-empty { color: #94a3b8; font-size: 0.9rem; font-style: italic; padding: 10px; }
+        /* Modifica layout contenuto: diviso a metà in colonne */
+        .agenda-content { flex: 1; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         
         .shift-pill {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+            padding: 8px 4px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;
         }
-        .pill-pranzo { background-color: var(--pranzo-bg); border-left: 4px solid var(--pranzo-border); color: #b45309; }
-        .pill-cena { background-color: var(--cena-bg); border-left: 4px solid var(--cena-border); color: #0369a1; }
-        .pill-chiuso { background-color: #f1f5f9; border-left: 4px solid #94a3b8; color: #64748b; }
+        .shift-pill .title { font-size: 0.7rem; text-transform: uppercase; margin-bottom: 4px; opacity: 0.8; }
+        .shift-pill .val { font-size: 1rem; }
+        
+        .pill-pranzo { background-color: var(--pranzo-bg); color: #b45309; border: 1px solid #fde68a; }
+        .pill-cena { background-color: var(--cena-bg); color: #0369a1; border: 1px solid #bae6fd; }
+        .pill-chiuso { background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+        .pill-empty { background-color: transparent; border: 1px dashed #cbd5e1; color: #94a3b8; }
 
         .list-view { display: none; }
         .list-group { margin-bottom: 25px; background: white; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden; }
@@ -141,7 +149,11 @@
         .list-item:last-child { border-bottom: none; }
         .item-top { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.05rem; color: var(--primary); }
         .item-details { color: var(--secondary); font-size: 0.85rem; display: flex; justify-content: space-between; font-weight: 500;}
-        .intol-badge { background: #fef2f2; color: var(--danger); font-size: 0.8rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 4px; border: 1px solid #fecaca; }
+        
+        /* Stili per i badge */
+        .badges-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+        .intol-badge { background: #fef2f2; color: var(--danger); font-size: 0.8rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; border: 1px solid #fecaca; }
+        .seggiolone-badge { background: #e0f2fe; color: #0369a1; font-size: 0.8rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; border: 1px solid #bae6fd; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -197,7 +209,7 @@
     <div class="header-actions">
         <button class="btn-outline" onclick="toggleView('calendar')" id="btn-cal">🗓 Agenda</button>
         <button class="btn-outline" onclick="toggleView('list')" id="btn-list">📋 Lista</button>
-        <button class="btn-accent" onclick="openFormModal()">➕ Nuova</button>
+        <button class="btn-accent" onclick="window.closeModals(); openFormModal()">➕ Nuova</button>
         <button class="btn-outline btn-icon" onclick="openOptionsModal()">⚙️</button>
     </div>
 </header>
@@ -225,8 +237,11 @@
         
         <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px;">
             <button class="btn-accent" onclick="installApp()" style="padding: 16px; font-size: 1.1rem;">
-                📱 Installa App su Cellulare
+                📱 Installa App su PC o Cellulare
             </button>
+            <p style="font-size: 0.8rem; color: var(--secondary); text-align: center;">
+                Su Windows/Mac (Chrome/Edge) questo la installerà come un programma (.exe) sul Desktop.
+            </p>
         </div>
     </div>
 </div>
@@ -318,7 +333,7 @@
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h2 id="day-modal-title" style="margin-top: 0; font-size: 1.3rem; margin-bottom: 20px; font-weight: 800;">Prenotazioni</h2>
         <div id="day-modal-list" style="margin-bottom: 25px; max-height: 50vh; overflow-y: auto;"></div>
-        <button class="btn-accent" style="width: 100%; padding: 16px; font-size: 1.05rem;" onclick="openFormModalForDay()">➕ Aggiungi per questo giorno</button>
+        <button class="btn-accent" style="width: 100%; padding: 16px; font-size: 1.05rem;" onclick="window.closeModals(); openFormModalForDay()">➕ Aggiungi per questo giorno</button>
     </div>
 </div>
 
@@ -326,15 +341,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-   const firebaseConfig = {
-  apiKey: "AIzaSyD_JLRWYDGbod9sAtotDLzBYAvg1js40_I",
-  authDomain: "ristorante-italo.firebaseapp.com",
-  projectId: "ristorante-italo",
-  storageBucket: "ristorante-italo.firebasestorage.app",
-  messagingSenderId: "311449776759",
-  appId: "1:311449776759:web:7623cb79093c576b9d0c72",
-  measurementId: "G-SRTCFX9GPY"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyD_JLRWYDGbod9sAtotDLzBYAvg1js40_I",
+        authDomain: "ristorante-italo.firebaseapp.com",
+        projectId: "ristorante-italo",
+        storageBucket: "ristorante-italo.firebasestorage.app",
+        messagingSenderId: "311449776759",
+        appId: "1:311449776759:web:7623cb79093c576b9d0c72",
+        measurementId: "G-SRTCFX9GPY"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -345,20 +360,9 @@
     let initialLoadDone = false;
     let deferredPrompt; 
 
-    // Nuovi Colori eleganti che verranno applicati SIA alla barra che allo SFONDO generale
     const monthColors = [
-        "#0f172a", // Gennaio (Blu notte)
-        "#334155", // Febbraio (Ardesia scura)
-        "#115e59", // Marzo (Verde scuro)
-        "#047857", // Aprile (Smeraldo)
-        "#c2410c", // Maggio (Arancio bruciato)
-        "#b91c1c", // Giugno (Rosso intenso)
-        "#e11d48", // Luglio (Rosso ciliegia)
-        "#d97706", // Agosto (Ambra scura)
-        "#b45309", // Settembre (Bronzo)
-        "#78350f", // Ottobre (Marrone autunnale)
-        "#475569", // Novembre (Grigio tempesta)
-        "#0f766e"  // Dicembre (Verde abete)
+        "#0f172a", "#334155", "#115e59", "#047857", "#c2410c", "#b91c1c", 
+        "#e11d48", "#d97706", "#b45309", "#78350f", "#475569", "#0f766e"
     ];
 
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
@@ -378,7 +382,6 @@
         return smHolidays.includes(mmdd) || dynamicHolidays.includes(yyyymmdd);
     }
 
-    // FIX BARRA DEL MESE: Calcola l'altezza dinamica dell'header principale per non coprire la barra del mese
     function adjustStickyHeader() {
         const headerHeight = document.getElementById('main-header').offsetHeight;
         document.getElementById('month-header').style.top = (headerHeight + 5) + 'px';
@@ -431,7 +434,7 @@
             const { outcome } = await deferredPrompt.userChoice;
             deferredPrompt = null;
         } else {
-            alert("PER INSTALLARE L'APP SUL TELEFONO:\n\n🍏 IPHONE (Safari):\n1. Tocca 'Condividi' (il quadrato con la freccia, in basso).\n2. Fai tap su 'Aggiungi a schermata Home'.\n\n🤖 ANDROID (Chrome):\n1. Tocca i tre puntini in alto a destra.\n2. Fai tap su 'Aggiungi a schermata Home'.");
+            alert("PER INSTALLARE L'APP SUL TELEFONO O PC:\n\n🍏 IPHONE (Safari):\n1. Tocca 'Condividi' (il quadrato con la freccia, in basso).\n2. Fai tap su 'Aggiungi a schermata Home'.\n\n🤖 ANDROID O PC (Chrome/Edge):\n1. Clicca i tre puntini del menu (in alto a destra).\n2. Seleziona 'Installa app' o 'Aggiungi a schermata Home'.");
         }
     };
 
@@ -456,7 +459,7 @@
     }
 
     function renderCalendar() {
-        adjustStickyHeader(); // Richiama il fix per l'altezza ogni volta che si renderizza
+        adjustStickyHeader();
         
         const grid = document.getElementById('agenda-grid');
         grid.innerHTML = '';
@@ -466,7 +469,6 @@
         const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
         const dayNames = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
         
-        // APPLICA IL COLORE ALLO SFONDO E ALLA BARRA DEL MESE
         const color = monthColors[month];
         document.getElementById('month-year-display').innerText = `${monthNames[month]} ${year}`;
         document.getElementById('month-header').style.backgroundColor = color;
@@ -479,7 +481,7 @@
             const dateObj = new Date(year, month, day);
             const dateString = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
             const isOggi = dateString === todayStr;
-            const isTuesday = dateObj.getDay() === 2; // Giorno 2 = Martedì
+            const isTuesday = dateObj.getDay() === 2;
             const isFestivo = isHoliday(dateObj) ? 'festivo' : '';
             
             const div = document.createElement('div');
@@ -490,31 +492,26 @@
             let html = `<div class="agenda-date"><span class="num">${day}</span><span class="day">${dayNames[dateObj.getDay()]}</span></div><div class="agenda-content">`;
             
             const dayRes = reservations.filter(r => r.date === dateString);
-            
-            if(dayRes.length === 0) {
-                // Nessuna prenotazione. Se è martedì mostriamo chiuso, altrimenti vuoto.
-                if (isTuesday) {
-                    html += `<div class="shift-pill pill-chiuso"><span>🌙 CENA (Chiuso)</span></div>`;
-                } else {
-                    html += `<div class="agenda-empty">${isOggi ? 'Oggi n' : 'N'}essuna prenotazione</div>`;
-                }
+            const resPranzo = dayRes.filter(r => r.service === 'Pranzo');
+            const resCena = dayRes.filter(r => r.service === 'Cena');
+
+            // --- COLONNA PRANZO (Sempre a sinistra) ---
+            if(resPranzo.length > 0) {
+                html += `<div class="shift-pill pill-pranzo"><span class="title">☀️ PRANZO</span> <span class="val">${resPranzo.reduce((s, r) => s + r.pax, 0)} pax</span></div>`;
             } else {
-                const resPranzo = dayRes.filter(r => r.service === 'Pranzo');
-                const resCena = dayRes.filter(r => r.service === 'Cena');
-                
-                if(resPranzo.length > 0) {
-                    html += `<div class="shift-pill pill-pranzo"><span>☀️ PRANZO</span> <span>${resPranzo.reduce((s, r) => s + r.pax, 0)} pax</span></div>`;
-                }
-                
-                if(resCena.length > 0) {
-                    // Se ci sono prenotazioni di martedì sera, le evidenzia come Apertura Extra
-                    const cenaTesto = isTuesday ? '🌙 CENA (Apertura Extra)' : '🌙 CENA';
-                    html += `<div class="shift-pill pill-cena"><span>${cenaTesto}</span> <span>${resCena.reduce((s, r) => s + r.pax, 0)} pax</span></div>`;
-                } else if (isTuesday) {
-                    // Ci sono prenotazioni a pranzo, ma non a cena ed è martedì
-                    html += `<div class="shift-pill pill-chiuso" style="margin-top:4px;"><span>🌙 CENA (Chiuso)</span></div>`;
-                }
+                html += `<div class="shift-pill pill-empty"><span class="title">☀️ PRANZO</span> <span class="val">-</span></div>`;
             }
+
+            // --- COLONNA CENA (Sempre a destra) ---
+            if(resCena.length > 0) {
+                const cenaTesto = isTuesday ? '🌙 EXTRA' : '🌙 CENA';
+                html += `<div class="shift-pill pill-cena"><span class="title">${cenaTesto}</span> <span class="val">${resCena.reduce((s, r) => s + r.pax, 0)} pax</span></div>`;
+            } else if (isTuesday) {
+                html += `<div class="shift-pill pill-chiuso"><span class="title">🌙 CENA</span> <span class="val" style="font-size:0.8rem;">Chiuso</span></div>`;
+            } else {
+                html += `<div class="shift-pill pill-empty"><span class="title">🌙 CENA</span> <span class="val">-</span></div>`;
+            }
+
             div.innerHTML = html + `</div>`;
             grid.appendChild(div);
         }
@@ -522,9 +519,9 @@
 
     function getIntoleranceString(intolObj) {
         let arr = [];
-        if(intolObj.celiaco > 0) arr.push(`${intolObj.celiaco} Cel`);
-        if(intolObj.vegetariano > 0) arr.push(`${intolObj.vegetariano} Vegt`);
-        if(intolObj.vegano > 0) arr.push(`${intolObj.vegano} Veg`);
+        if(intolObj.celiaco > 0) arr.push(`${intolObj.celiaco} Celiaci`);
+        if(intolObj.vegetariano > 0) arr.push(`${intolObj.vegetariano} Vegetariani`);
+        if(intolObj.vegano > 0) arr.push(`${intolObj.vegano} Vegani`);
         return arr.length > 0 ? `⚠️ ${arr.join(' • ')}` : '';
     }
 
@@ -538,14 +535,24 @@
             if(arr.length === 0) return '';
             const totPax = arr.reduce((s,r) => s + r.pax, 0);
             let groupHtml = `<div class="service-section"><div class="service-title ${titleClass}"><span>${icon} ${titleText}</span> <span>Tot: ${totPax} pax</span></div>`;
+            
             arr.forEach(r => {
+                // Costruisci badge Intolleranze e Seggioloni
                 const intolStr = getIntoleranceString(r.intolerances);
-                const intolHtml = intolStr ? `<div class="intol-badge">${intolStr}</div>` : '';
+                const intolBadge = intolStr ? `<div class="intol-badge">${intolStr}</div>` : '';
+                const seggBadge = r.highchairs > 0 ? `<div class="seggiolone-badge">🪑 ${r.highchairs} Seggiolone/i</div>` : '';
+                
+                let badgesHtml = '';
+                if(intolBadge || seggBadge) {
+                    badgesHtml = `<div class="badges-container">${intolBadge}${seggBadge}</div>`;
+                }
+
+                // Chiudi PRIMA le modali correnti, poi apri il form per la modifica
                 groupHtml += `
-                    <div class="list-item" onclick="openFormModal('${r.id}')">
+                    <div class="list-item" onclick="window.closeModals(); window.openFormModal('${r.id}')">
                         <div class="item-top"><span>${r.time} - ${r.name}</span><span>${r.pax} pax</span></div>
                         <div class="item-details"><span>📞 ${r.phone}</span><span>Op: ${r.operator}</span></div>
-                        ${intolHtml}
+                        ${badgesHtml}
                     </div>`;
             });
             return groupHtml + `</div>`;
@@ -578,7 +585,6 @@
             let itaDate = new Date(dateStr).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
             if(isOggi) itaDate = "⭐ OGGI - " + itaDate;
             
-            // Nella vista elenco le liste hanno intestazioni con colore abbinato al mese di riferimento
             const listMonth = new Date(dateStr).getMonth();
             const groupDiv = document.createElement('div');
             groupDiv.className = 'list-group';
