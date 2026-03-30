@@ -181,6 +181,14 @@
     </style>
 </head>
 <body>
+    <div id="login-overlay" style="position:fixed; inset:0; background:#0f172a; z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column; color:white; font-family:'Inter',sans-serif;">
+    <div style="background:white; padding:30px; border-radius:24px; width:90%; max-width:350px; text-align:center; color:#0f172a; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+        <h2 style="margin:0 0 10px 0;">RistoGest Pro</h2>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:25px;">Inserisci la chiave d'accesso per gestire le prenotazioni</p>
+        <input type="password" id="app-pwd-input" placeholder="Password..." style="width:100%; padding:15px; border-radius:12px; border:2px solid #e2e8f0; font-size:1.1rem; margin-bottom:15px; text-align:center; outline:none;">
+        <button onclick="checkAppPassword()" style="width:100%; padding:15px; border-radius:12px; border:none; background:#4f46e5; color:white; font-weight:800; font-size:1rem; cursor:pointer;">ACCEDI</button>
+    </div>
+</div>
 
 <div id="loading-overlay">Sincronizzazione... ⏳</div>
 
@@ -303,7 +311,7 @@
 
             <div class="row" style="margin-top: 20px;">
                 <button type="submit" id="btn-submit-save" class="btn-accent" style="flex: 2; padding: 16px; font-size: 1.1rem; border-radius: 12px;">💾 Salva Prenotazione</button>
-                <button type="button" id="btn-delete" class="btn-danger" style="display:none; flex: 1; border-radius: 12px;" onclick="deleteReservation()">🗑 Elimina</button>
+                <button type="button" id="btn-delete" class="btn-danger" style="display:none; flex: 1; border-radius: 12px;" onclick="**window.**deleteReservation()">🗑 Elimina</button>
             </div>
         </form>
     </div>
@@ -319,6 +327,23 @@
 </div>
 
 <script type="module">
+    // Funzione per controllare la password al primo avvio
+window.checkAppPassword = function() {
+    const input = document.getElementById('app-pwd-input').value;
+    if(input === '0000') { // Deve essere identica a quella su Firebase
+        localStorage.setItem('risto_secret_key', input);
+        document.getElementById('login-overlay').style.display = 'none';
+    } else {
+        alert("Password errata!");
+    }
+};
+
+// Controllo automatico: se la password è già salvata, entra subito
+window.addEventListener('load', () => {
+    if(localStorage.getItem('risto_secret_key') === '0000') {
+        document.getElementById('login-overlay').style.display = 'none';
+    }
+});
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
@@ -554,30 +579,85 @@
         document.getElementById('formModal').style.display = 'block';
     };
 
-    window.saveReservation = async function(e) {
-        e.preventDefault();
-        const btnSalva = document.getElementById('btn-submit-save'); btnSalva.disabled = true; btnSalva.innerText = "⏳ Salvataggio...";
-        const timeValue = document.getElementById('res-time').value;
-        const autoService = parseInt(timeValue.split(':')[0]) < 15 ? 'Pranzo' : 'Cena';
-        const id = document.getElementById('res-id').value || Date.now().toString() + Math.floor(Math.random()*1000);
-        const newRes = {
-            date: document.getElementById('res-date').value, service: autoService, time: timeValue, name: document.getElementById('res-name').value,
-            phone: document.getElementById('res-phone').value, pax: parseInt(document.getElementById('res-pax').value),
-            children: parseInt(document.getElementById('res-children').value) || 0, highchairs: parseInt(document.getElementById('res-highchairs').value) || 0,
-            intolerances: { celiaco: parseInt(document.getElementById('int-celiaco').value) || 0, vegetariano: parseInt(document.getElementById('int-vegetariano').value) || 0, vegano: parseInt(document.getElementById('int-vegano').value) || 0 },
-            notes: document.getElementById('res-notes').value, operator: document.getElementById('res-operator').value
-        };
-        try { window.closeModals(); selectedDayForNewRes = null; await setDoc(doc(db, "prenotazioni", id), newRes); } 
-        catch (error) { alert("Errore durante il salvataggio."); } 
-        finally { btnSalva.disabled = false; btnSalva.innerText = "💾 Salva Prenotazione"; }
+   window.saveReservation = async function(e) {
+    e.preventDefault();
+    
+    // RECUPERIAMO LA CHIAVE SEGRETA SALVATA NEL TABLET
+    const savedSecret = localStorage.getItem('risto_secret_key');
+    
+    const btnSalva = document.getElementById('btn-submit-save'); 
+    btnSalva.disabled = true; 
+    btnSalva.innerText = "⏳ Salvataggio...";
+    
+    const timeValue = document.getElementById('res-time').value;
+    const autoService = parseInt(timeValue.split(':')[0]) < 15 ? 'Pranzo' : 'Cena';
+    const id = document.getElementById('res-id').value || Date.now().toString() + Math.floor(Math.random()*1000);
+    
+    const newRes = {
+        date: document.getElementById('res-date').value, 
+        service: autoService, 
+        time: timeValue, 
+        name: document.getElementById('res-name').value,
+        phone: document.getElementById('res-phone').value, 
+        pax: parseInt(document.getElementById('res-pax').value),
+        children: parseInt(document.getElementById('res-children').value) || 0, 
+        highchairs: parseInt(document.getElementById('res-highchairs').value) || 0,
+        intolerances: { 
+            celiaco: parseInt(document.getElementById('int-celiaco').value) || 0, 
+            vegetariano: parseInt(document.getElementById('int-vegetariano').value) || 0, 
+            vegano: parseInt(document.getElementById('int-vegano').value) || 0 
+        },
+        notes: document.getElementById('res-notes').value, 
+        operator: document.getElementById('res-operator').value,
+        
+        // AGGIUNGIAMO LA CHIAVE SEGRETA (IL "PUNTO B")
+        secret: savedSecret 
     };
 
-    window.deleteReservation = async function() {
-        if(confirm("Eliminare definitivamente questa prenotazione?")) {
-            try { await deleteDoc(doc(db, "prenotazioni", document.getElementById('res-id').value)); window.closeModals(); } 
-            catch (error) { alert("Errore durante l'eliminazione."); }
+    try { 
+        await setDoc(doc(db, "prenotazioni", id), newRes);
+        window.closeModals(); 
+        selectedDayForNewRes = null; 
+    } 
+    catch (error) { 
+        alert("Errore! La password salvata non è valida o non hai i permessi."); 
+        console.error(error);
+    } 
+    finally { 
+        btnSalva.disabled = false; 
+        btnSalva.innerText = "💾 Salva Prenotazione"; 
+    }
+};
+// --- AGGIUNGI DA QUI ---
+window.deleteReservation = async function() {
+    const id = document.getElementById('res-id').value;
+    if (!id) return;
+
+    if (confirm("Sei sicuro di voler eliminare definitivamente questa prenotazione?")) {
+        // Recuperiamo la chiave segreta salvata
+        const savedSecret = localStorage.getItem('risto_secret_key');
+
+        const btnDelete = document.getElementById('btn-delete');
+        btnDelete.disabled = true;
+        btnDelete.innerText = "⏳ Eliminazione...";
+
+        try {
+            // Eliminiamo il documento usando la chiave per le regole di sicurezza
+            // Nota: Se hai configurato le regole come abbiamo detto, Firebase verificherà il permesso
+            await deleteDoc(doc(db, "prenotazioni", id));
+            
+            window.closeModals();
+            alert("Prenotazione eliminata correttamente.");
+        } catch (error) {
+            console.error("Errore durante l'eliminazione:", error);
+            alert("Errore! Non hai i permessi per eliminare o la password è errata.");
+        } finally {
+            btnDelete.disabled = false;
+            btnDelete.innerText = "🗑 Elimina";
         }
-    };
+    }
+};
+// --- FINO A QUI ---
 </script>
 
 </body>
