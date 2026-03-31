@@ -82,6 +82,7 @@
         
         .btn-accent { background-color: var(--accent); color: white; flex: 1; box-shadow: var(--shadow-float); }
         .btn-accent:active { transform: scale(0.97); background-color: var(--accent-hover); box-shadow: none; }
+        .btn-accent:disabled { background-color: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.7; }
         
         .btn-outline { background-color: var(--white); border: 1px solid var(--border); color: var(--secondary); flex: 1; box-shadow: var(--shadow-sm); }
         .btn-outline:active { background-color: #f1f5f9; transform: scale(0.97); }
@@ -162,12 +163,32 @@
         }
         
         .modal-drag-handle { width: 40px; height: 5px; background: #cbd5e1; border-radius: 10px; margin: -15px auto 20px auto; }
-
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
         .close-modal { position: absolute; top: 20px; right: 20px; font-size: 1.5rem; cursor: pointer; color: var(--secondary); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 50%; font-weight: bold; transition: all 0.2s;}
         .close-modal:active { background: #e2e8f0; transform: scale(0.9); }
         
+        /* STILI IMPOSTAZIONI A RIGHE E TOGGLES */
+        .settings-list { background: var(--white); border-radius: var(--radius-md); border: 1px solid var(--border); overflow: hidden; margin-bottom: 24px; }
+        .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
+        .settings-row.no-hover { cursor: default; }
+        .settings-row.no-hover:active { background: var(--white); }
+        .settings-row:active:not(.no-hover) { background: #f8fafc; }
+        .settings-row:last-child { border-bottom: none; }
+        .settings-row .icon { font-size: 1.3rem; margin-right: 14px; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #f1f5f9; border-radius: 8px; }
+        .settings-row .text { flex: 1; font-weight: 700; color: var(--primary); font-size: 1rem; }
+        .settings-row .chevron { color: var(--secondary); font-size: 1.4rem; font-weight: 400; }
+        .settings-row.danger .text { color: var(--danger); }
+        .settings-row.danger .icon { background: var(--danger-light); color: var(--danger); }
+        
+        /* SWITCH (Interruttori stile iOS) */
+        .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-weight: 800; margin-bottom: 8px; font-size: 0.85rem; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.5px; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px 16px; border: 2px solid transparent; border-radius: var(--radius-sm); font-size: 16px; background-color: #f1f5f9; color: var(--primary); font-weight: 600; transition: all 0.2s; }
@@ -243,7 +264,7 @@
         <button class="btn-outline" onclick="window.toggleView('list', this)" id="btn-list">📋 Lista</button>
         <button class="btn-outline" onclick="window.openOptionsModal()" style="flex: 0 0 54px; padding: 0; background: var(--light);">⚙️</button>
     </div>
-    <button class="btn-accent" onclick="window.closeModals(); openFormModal()" style="width: 100%; padding: 16px; font-size: 1.05rem;">➕ Aggiungi prenotazione</button>
+    <button id="main-add-btn" class="btn-accent" onclick="window.closeModals(); openFormModal()" style="width: 100%; padding: 16px; font-size: 1.05rem;">➕ Aggiungi prenotazione</button>
 </header>
 
 <main>
@@ -265,46 +286,72 @@
     <div class="modal-content">
         <div class="modal-drag-handle"></div>
         <span class="close-modal" onclick="closeModals()">&times;</span>
-        <h2 style="margin-top: 0; font-weight: 800; margin-bottom: 24px; color: var(--primary);">⚙️ Opzioni</h2>
+        <h2 style="margin-top: 0; font-weight: 800; margin-bottom: 24px; color: var(--primary);">⚙️ Impostazioni</h2>
         
-        <div style="background: var(--light); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 24px;">
-            <h3 style="font-size: 1.05rem; margin-top: 0; margin-bottom: 16px; color: var(--primary);">Chiusura Settimanale</h3>
-            <div class="row">
-                <div class="form-group col">
-                    <label>Giorno</label>
-                    <select id="opt-closing-day">
-                        <option value="1">Lunedì</option>
-                        <option value="2">Martedì</option>
-                        <option value="3">Mercoledì</option>
-                        <option value="4">Giovedì</option>
-                        <option value="5">Venerdì</option>
-                        <option value="6">Sabato</option>
-                        <option value="0">Domenica</option>
-                        <option value="-1">Nessuno</option>
-                    </select>
+        <div class="settings-list" id="unlock-container">
+            <div class="settings-row" onclick="unlockAdmin()" id="row-admin-unlock">
+                <div class="icon">🔐</div><div class="text">Sblocca Modalità Creatore</div><div class="chevron">›</div>
+            </div>
+        </div>
+
+        <div id="admin-settings" style="display: none;">
+            
+            <p style="font-size: 0.8rem; font-weight: 800; color: var(--secondary); text-transform: uppercase; margin: 0 0 8px 10px; letter-spacing: 0.5px;">Permessi Camerieri</p>
+            <div class="settings-list">
+                <div class="settings-row no-hover">
+                    <div class="icon">➕</div><div class="text">Creare prenotazioni</div>
+                    <label class="switch"><input type="checkbox" id="perm-add" onchange="window.updatePermissions()"><span class="slider"></span></label>
                 </div>
-                <div class="form-group col">
-                    <label>Turno</label>
-                    <select id="opt-closing-shift">
-                        <option value="tutto">Tutto il giorno</option>
-                        <option value="pranzo">Solo Pranzo</option>
-                        <option value="cena">Solo Cena</option>
-                    </select>
+                <div class="settings-row no-hover">
+                    <div class="icon">✏️</div><div class="text">Modificare prenotazioni</div>
+                    <label class="switch"><input type="checkbox" id="perm-edit" onchange="window.updatePermissions()"><span class="slider"></span></label>
+                </div>
+                <div class="settings-row no-hover">
+                    <div class="icon">🗑</div><div class="text">Eliminare prenotazioni</div>
+                    <label class="switch"><input type="checkbox" id="perm-delete" onchange="window.updatePermissions()"><span class="slider"></span></label>
                 </div>
             </div>
-            <button class="btn-accent" style="width: 100%; padding: 14px;" onclick="window.saveSettings()">💾 Salva Impostazioni</button>
+
+            <p style="font-size: 0.8rem; font-weight: 800; color: var(--secondary); text-transform: uppercase; margin: 0 0 8px 10px; letter-spacing: 0.5px;">Gestione Locale</p>
+            <div class="settings-list">
+                <div class="settings-row" onclick="window.changeAdminPin()">
+                    <div class="icon">🔑</div><div class="text">Cambia PIN Creatore</div><div class="chevron">›</div>
+                </div>
+                <div class="settings-row" onclick="window.apriImpostazioniChiusura()">
+                    <div class="icon">📅</div><div class="text">Giorni di Chiusura</div><div class="chevron">›</div>
+                </div>
+                <div class="settings-row" onclick="window.exportBackup()">
+                    <div class="icon">📥</div><div class="text">Esporta Backup Dati</div><div class="chevron">›</div>
+                </div>
+            </div>
         </div>
 
-        <div style="background: var(--accent-light); padding: 20px; border-radius: var(--radius-md); border: 1px solid #c7d2fe;">
-            <h3 style="font-size: 1.05rem; margin-top: 0; margin-bottom: 16px; color: var(--accent);">Backup Sistema</h3>
-            <button class="btn-outline" style="width: 100%; margin-bottom: 20px; border-color: #a5b4fc; color: var(--accent); background: white; padding: 14px;" onclick="window.exportBackup()">📥 Scarica Backup (JSON)</button>
-            
-            <label style="display: block; font-weight: 800; font-size: 0.85rem; color: var(--accent); margin-bottom: 8px;">Ripristino da JSON</label>
-            <input type="file" id="backup-file" accept=".json" style="width: 100%; margin-bottom: 14px; padding: 12px; border: 2px dashed #a5b4fc; border-radius: var(--radius-sm); background: white;">
-            <button class="btn-danger" style="width: 100%; padding: 14px;" onclick="window.importBackup()">📤 Ripristina su Firebase</button>
+        <div class="settings-list">
+            <div class="settings-row danger" onclick="window.logoutRestaurant()">
+                <div class="icon">🚪</div><div class="text">Esci dall'Account Ristorante</div>
+            </div>
         </div>
+    </div>
+</div>
 
-        <button class="btn-danger" style="width: 100%; padding: 14px; margin-top: 20px; border-radius: var(--radius-md);" onclick="window.logoutRestaurant()">🚪 Esci dall'Account</button>
+<div id="chiusuraModal" class="modal" style="z-index: 1001;">
+    <div class="modal-content" style="background: var(--light);">
+        <div class="modal-drag-handle"></div>
+        <span class="close-modal" onclick="document.getElementById('chiusuraModal').style.display='none'">&times;</span>
+        <h3 style="margin-top: 0; font-weight: 800; color: var(--primary); margin-bottom: 20px;">📅 Chiusura Settimanale</h3>
+        <div class="row">
+            <div class="form-group col"><label>Giorno</label>
+                <select id="opt-closing-day">
+                    <option value="-1">Nessuno (Sempre aperto)</option>
+                    <option value="1">Lunedì</option><option value="2">Martedì</option><option value="3">Mercoledì</option>
+                    <option value="4">Giovedì</option><option value="5">Venerdì</option><option value="6">Sabato</option><option value="0">Domenica</option>
+                </select>
+            </div>
+            <div class="form-group col"><label>Turno</label>
+                <select id="opt-closing-shift"><option value="tutto">Tutto il giorno</option><option value="pranzo">Solo Pranzo</option><option value="cena">Solo Cena</option></select>
+            </div>
+        </div>
+        <button class="btn-accent" style="width: 100%; padding: 16px; margin-top: 10px;" onclick="window.saveClosingSettings()">💾 Salva</button>
     </div>
 </div>
 
@@ -409,7 +456,7 @@
             <div class="form-group"><label>Operatore</label><input type="text" id="res-operator" required placeholder="Tuo nome"></div>
 
             <div class="row" style="margin-top: 24px;">
-                <button type="submit" id="btn-submit-save" class="btn-accent" style="flex: 2; padding: 18px; font-size: 1.15rem; border-radius: 16px;">💾 Salva Prenotazione</button>
+                <button type="submit" id="btn-submit-save" class="btn-accent" style="flex: 2; padding: 18px; font-size: 1.15rem; border-radius: 16px;">💾 Salva</button>
                 <button type="button" id="btn-delete" class="btn-danger" style="display:none; flex: 1; border-radius: 16px; font-size: 1.15rem;" onclick="window.deleteReservation()">🗑 Elimina</button>
             </div>
         </form>
@@ -422,25 +469,25 @@
         <span class="close-modal" onclick="closeModals()">&times;</span>
         <h2 id="day-modal-title" style="margin-top: 0; font-size: 1.3rem; margin-bottom: 20px; font-weight: 800; color: var(--primary);">Prenotazioni</h2>
         <div id="day-modal-list" style="margin-bottom: 24px; max-height: 55vh; overflow-y: auto;"></div>
-        <button class="btn-accent" style="width: 100%; padding: 18px; border-radius: 16px; font-size: 1.1rem;" onclick="window.closeModals(); openFormModalForDay()">➕ Aggiungi prenotazione</button>
+        <button id="day-add-btn" class="btn-accent" style="width: 100%; padding: 18px; border-radius: 16px; font-size: 1.1rem;" onclick="window.closeModals(); openFormModalForDay()">➕ Aggiungi prenotazione</button>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-   const firebaseConfig = {
-  apiKey: "AIzaSyBidWhuv1uWHKQ7Rib6BxcvK9sbG4QjA_4",
-  authDomain: "risto-gest-pro-2026.firebaseapp.com",
-  databaseURL: "https://risto-gest-pro-2026-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "risto-gest-pro-2026",
-  storageBucket: "risto-gest-pro-2026.firebasestorage.app",
-  messagingSenderId: "135116387205",
-  appId: "1:135116387205:web:729c51f3ff2c1dcd874aec",
-  measurementId: "G-SP10P2SRRF"
-};
+    // --- INSERISCI QUI LE TUE CHIAVI FIREBASE SE HAI CREATO IL NUOVO PROGETTO ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyD_JLRWYDGbod9sAtotDLzBYAvg1js40_I",
+        authDomain: "ristorante-italo.firebaseapp.com",
+        projectId: "ristorante-italo",
+        storageBucket: "ristorante-italo.firebasestorage.app",
+        messagingSenderId: "311449776759",
+        appId: "1:311449776759:web:7623cb79093c576b9d0c72",
+        measurementId: "G-SRTCFX9GPY"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -452,50 +499,53 @@
     let initialLoadDone = false;
     let currentRestaurantId = null; 
     let unsubscribeSnapshot = null; 
+    
+    // --- GESTIONE RUOLI E IMPOSTAZIONI ---
+    let isAdmin = false;
+    let restaurantSettings = {
+        adminPin: "123", // PIN Iniziale di Default
+        perms: { add: true, edit: true, delete: false },
+        closing: { day: '2', shift: 'cena' }
+    };
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
+    // LISTENER AUTENTICAZIONE
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentRestaurantId = user.uid;
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('loading-overlay').style.display = 'flex';
-            startListeningToReservations();
+            loadSettingsAndReservations();
         } else {
             currentRestaurantId = null;
+            isAdmin = false;
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('loading-overlay').style.display = 'none';
-            if(unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-                unsubscribeSnapshot = null;
-            }
+            if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
             reservations = [];
+            resetUI();
             renderCalendar();
             renderList();
         }
     });
 
+    // --- AUTENTICAZIONE FUNZIONI ---
     window.loginRestaurant = function() {
         const email = document.getElementById('app-email-input').value.trim();
         const pwd = document.getElementById('app-pwd-input').value;
         const btnLogin = document.getElementById('btn-login');
 
         if(!email || !pwd) return alert("Inserisci email e password per accedere.");
-
-        btnLogin.innerText = "ACCESSO IN CORSO... ⏳";
-        btnLogin.disabled = true;
+        btnLogin.innerText = "ACCESSO IN CORSO... ⏳"; btnLogin.disabled = true;
 
         signInWithEmailAndPassword(auth, email, pwd)
-            .then(() => {
-                btnLogin.innerText = "ACCEDI";
-                btnLogin.disabled = false;
-            })
+            .then(() => { btnLogin.innerText = "ACCEDI"; btnLogin.disabled = false; })
             .catch(() => {
                 alert("Errore: Credenziali errate o utente inesistente.");
-                btnLogin.innerText = "ACCEDI";
-                btnLogin.disabled = false;
+                btnLogin.innerText = "ACCEDI"; btnLogin.disabled = false;
             });
     };
 
@@ -507,51 +557,55 @@
         if(!email || !pwd) return alert("Inserisci un'email e una password per registrarti.");
         if(pwd.length < 6) return alert("La password deve avere almeno 6 caratteri.");
 
-        btnRegister.innerText = "CREAZIONE... ⏳";
-        btnRegister.disabled = true;
+        btnRegister.innerText = "CREAZIONE... ⏳"; btnRegister.disabled = true;
 
         createUserWithEmailAndPassword(auth, email, pwd)
             .then(() => {
                 alert("Account creato con successo! Benvenuto in RistoGest Pro.");
-                btnRegister.innerText = "CREA ACCOUNT";
-                btnRegister.disabled = false;
+                btnRegister.innerText = "CREA ACCOUNT"; btnRegister.disabled = false;
             })
             .catch((error) => {
                 let msg = "Errore durante la registrazione.";
                 if (error.code === 'auth/email-already-in-use') msg = "Questa email è già in uso. Prova ad accedere.";
                 if (error.code === 'auth/invalid-email') msg = "L'email inserita non è valida.";
                 alert(msg);
-                btnRegister.innerText = "CREA ACCOUNT";
-                btnRegister.disabled = false;
+                btnRegister.innerText = "CREA ACCOUNT"; btnRegister.disabled = false;
             });
     };
 
     window.forgotPassword = function() {
         const email = document.getElementById('app-email-input').value.trim();
-        if(!email) return alert("Inserisci la tua email nella casella qui sopra per recuperare la password.");
+        if(!email) return alert("Scrivi la tua email nella casella qui sopra e clicca di nuovo su 'Password dimenticata?'.");
         
         sendPasswordResetEmail(auth, email)
-            .then(() => {
-                alert("Email di recupero inviata! Controlla la tua casella di posta per reimpostare la password.");
-            })
+            .then(() => alert("Email inviata! Controlla la tua posta in arrivo (e lo Spam)."))
             .catch((error) => {
-                alert("Impossibile inviare l'email. Verifica di aver scritto l'indirizzo corretto.");
+                if(error.code === 'auth/user-not-found') alert("Questa email non risulta registrata.");
+                else alert("Errore durante l'invio.");
             });
     };
 
     window.logoutRestaurant = function() {
-        if(confirm("Sei sicuro di voler uscire dall'account? Dovrai reinserire i dati.")) {
-            signOut(auth).then(() => {
-                window.closeModals();
-            });
-        }
+        if(confirm("Sei sicuro di voler uscire dall'account?")) { signOut(auth).then(() => { window.closeModals(); }); }
     };
 
-    function startListeningToReservations() {
+    // --- CARICAMENTO IMPOSTAZIONI CLOUD E PRENOTAZIONI ---
+    async function loadSettingsAndReservations() {
         if (!currentRestaurantId) return;
         
-        const dbPath = collection(db, "ristoranti", currentRestaurantId, "prenotazioni");
+        // 1. Carica prima le impostazioni
+        const settingsDoc = await getDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"));
+        if(settingsDoc.exists()) {
+            restaurantSettings = settingsDoc.data();
+        } else {
+            // Se non esistono, le salva sul cloud per la prima volta
+            await setDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"), restaurantSettings);
+        }
         
+        applyPermissionsToUI();
+
+        // 2. Carica le prenotazioni
+        const dbPath = collection(db, "ristoranti", currentRestaurantId, "prenotazioni");
         unsubscribeSnapshot = onSnapshot(dbPath, (snapshot) => {
             reservations = [];
             snapshot.forEach((doc) => { reservations.push({ id: doc.id, ...doc.data() }); });
@@ -566,34 +620,110 @@
                 window.openDayModal(selectedDayForNewRes); 
             }
         }, (error) => { 
-            document.getElementById('loading-overlay').innerText = "Errore connessione. Verifica le regole del DB."; 
-            console.error(error);
+            document.getElementById('loading-overlay').innerText = "Errore connessione DB."; 
         });
     }
 
-    window.openOptionsModal = function() {
-        window.closeModals();
-        document.getElementById('opt-closing-day').value = localStorage.getItem('risto_closing_day') || '2'; 
-        document.getElementById('opt-closing-shift').value = localStorage.getItem('risto_closing_shift') || 'cena'; 
-        document.getElementById('optionsModal').style.display = 'block';
-    };
-
-    window.saveSettings = function() {
-        const passwordInput = prompt("Inserisci la password di sicurezza per le impostazioni interne dell'app:");
-        const correctPassword = localStorage.getItem('risto_secret_key') || 'CristinaSamu'; 
+    // --- LOGICA MODALITA' ADMIN E PERMESSI ---
+    window.unlockAdmin = function() {
+        if(isAdmin) return alert("Sei già in Modalità Creatore.");
+        const pin = prompt("Inserisci il PIN Creatore per sbloccare le funzioni:");
         
-        if (passwordInput === correctPassword) {
-            localStorage.setItem('risto_closing_day', document.getElementById('opt-closing-day').value);
-            localStorage.setItem('risto_closing_shift', document.getElementById('opt-closing-shift').value);
-            alert("Impostazioni salvate con successo!");
-            window.closeModals();
-            renderCalendar(); 
-        } else if(passwordInput !== null) {
-            alert("Password errata! Le modifiche non sono state salvate.");
+        if(pin === restaurantSettings.adminPin) {
+            isAdmin = true;
+            document.getElementById('admin-settings').style.display = 'block';
+            
+            const unlockRow = document.getElementById('row-admin-unlock');
+            unlockRow.querySelector('.text').innerText = "Modalità Creatore Attiva ✅";
+            unlockRow.querySelector('.icon').innerText = "👑";
+            unlockRow.style.background = "var(--accent-light)";
+            unlockRow.querySelector('.text').style.color = "var(--accent)";
+            unlockRow.classList.add('no-hover');
+            
+            // Imposta gli interruttori visivamente
+            document.getElementById('perm-add').checked = restaurantSettings.perms.add;
+            document.getElementById('perm-edit').checked = restaurantSettings.perms.edit;
+            document.getElementById('perm-delete').checked = restaurantSettings.perms.delete;
+            
+            applyPermissionsToUI();
+        } else if(pin !== null) {
+            alert("PIN Errato!");
         }
     };
 
+    window.changeAdminPin = async function() {
+        if(!isAdmin) return;
+        const newPin = prompt("Inserisci il NUOVO PIN Creatore:");
+        if(newPin && newPin.length > 0) {
+            restaurantSettings.adminPin = newPin;
+            await saveCloudSettings();
+            alert("PIN modificato con successo!");
+        }
+    };
+
+    window.updatePermissions = async function() {
+        if(!isAdmin) return;
+        restaurantSettings.perms.add = document.getElementById('perm-add').checked;
+        restaurantSettings.perms.edit = document.getElementById('perm-edit').checked;
+        restaurantSettings.perms.delete = document.getElementById('perm-delete').checked;
+        
+        await saveCloudSettings();
+        applyPermissionsToUI();
+    };
+
+    async function saveCloudSettings() {
+        if(!currentRestaurantId) return;
+        try {
+            await setDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"), restaurantSettings);
+        } catch(e) { console.error("Errore salvataggio impostazioni", e); }
+    }
+
+    function applyPermissionsToUI() {
+        // Tasti di aggiunta (Main header e Modal giorno)
+        const canAdd = isAdmin || restaurantSettings.perms.add;
+        document.getElementById('main-add-btn').style.display = canAdd ? 'flex' : 'none';
+        const dayBtn = document.getElementById('day-add-btn');
+        if(dayBtn) dayBtn.style.display = canAdd ? 'block' : 'none';
+
+        // Tasto di modifica salvataggio
+        const canEdit = isAdmin || restaurantSettings.perms.edit;
+        document.getElementById('btn-submit-save').disabled = !canEdit;
+        if(!canEdit) document.getElementById('btn-submit-save').innerText = "Modifica Disabilitata";
+        else document.getElementById('btn-submit-save').innerText = "💾 Salva";
+    }
+
+    function resetUI() {
+        document.getElementById('admin-settings').style.display = 'none';
+        const unlockRow = document.getElementById('row-admin-unlock');
+        if(unlockRow) {
+            unlockRow.querySelector('.text').innerText = "Sblocca Modalità Creatore";
+            unlockRow.querySelector('.icon').innerText = "🔐";
+            unlockRow.style.background = "var(--white)";
+            unlockRow.querySelector('.text').style.color = "var(--primary)";
+            unlockRow.classList.remove('no-hover');
+        }
+    }
+
+    // --- IMPOSTAZIONI CHIUSURA E BACKUP (Roba da Admin) ---
+    window.apriImpostazioniChiusura = function() {
+        if(!isAdmin) return;
+        document.getElementById('opt-closing-day').value = restaurantSettings.closing.day; 
+        document.getElementById('opt-closing-shift').value = restaurantSettings.closing.shift; 
+        document.getElementById('chiusuraModal').style.display = 'block';
+    };
+
+    window.saveClosingSettings = async function() {
+        if(!isAdmin) return;
+        restaurantSettings.closing.day = document.getElementById('opt-closing-day').value;
+        restaurantSettings.closing.shift = document.getElementById('opt-closing-shift').value;
+        await saveCloudSettings();
+        alert("Giorni di chiusura aggiornati!");
+        document.getElementById('chiusuraModal').style.display = 'none';
+        renderCalendar(); 
+    };
+
     window.exportBackup = function() {
+        if(!isAdmin) return;
         if(reservations.length === 0) return alert("Nessuna prenotazione da esportare.");
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reservations));
         const dlAnchorElem = document.createElement('a');
@@ -602,38 +732,6 @@
         dlAnchorElem.click();
     };
 
-    window.importBackup = function() {
-        const fileInput = document.getElementById('backup-file');
-        if (!fileInput.files.length) return alert("Seleziona un file JSON.");
-        if (!currentRestaurantId) return alert("Errore di sessione.");
-        
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = async function(e) {
-            try {
-                const importedRes = JSON.parse(e.target.result);
-                if (!Array.isArray(importedRes)) throw new Error("File non valido.");
-                if (!confirm(`Trovate ${importedRes.length} prenotazioni. Caricarle nel database del tuo ristorante?`)) return;
-
-                document.getElementById('loading-overlay').innerText = "Ripristino in corso... ⏳";
-                document.getElementById('loading-overlay').style.display = 'flex';
-
-                for (const res of importedRes) {
-                    await setDoc(doc(db, "ristoranti", currentRestaurantId, "prenotazioni", res.id), res);
-                }
-                
-                alert("Ripristino completato con successo!");
-                window.closeModals();
-                fileInput.value = ""; 
-            } catch (error) {
-                alert("Errore durante l'importazione: " + error.message);
-            } finally {
-                document.getElementById('loading-overlay').style.display = 'none';
-            }
-        };
-        reader.readAsText(file);
-    };
 
     window.checkClosedShift = function() {
         const dateVal = document.getElementById('res-date').value;
@@ -644,8 +742,8 @@
             const hour = parseInt(timeVal.split(':')[0]);
             const isPranzo = hour < 15;
             
-            const closingDay = parseInt(localStorage.getItem('risto_closing_day') || '2');
-            const closingShift = localStorage.getItem('risto_closing_shift') || 'cena';
+            const closingDay = parseInt(restaurantSettings.closing.day);
+            const closingShift = restaurantSettings.closing.shift;
 
             if (dayOfWeek === closingDay) {
                 if (closingShift === 'tutto' || (closingShift === 'pranzo' && isPranzo) || (closingShift === 'cena' && !isPranzo)) {
@@ -661,9 +759,7 @@
     window.confirmCall = function(phone, name) {
         if (!phone) return;
         const displayName = name ? name : "questo numero";
-        if (confirm(`Vuoi chiamare ${displayName} al numero ${phone}?`)) {
-            window.location.href = `tel:${phone}`;
-        }
+        if (confirm(`Vuoi chiamare ${displayName} al numero ${phone}?`)) { window.location.href = `tel:${phone}`; }
     };
 
     document.getElementById('res-phone').addEventListener('input', (e) => {
@@ -711,6 +807,11 @@
         if(view === 'list') renderList();
     };
 
+    window.openOptionsModal = function() {
+        window.closeModals();
+        document.getElementById('optionsModal').style.display = 'block';
+    };
+
     window.closeModals = function() {
         document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
         document.getElementById('reservationForm').reset();
@@ -748,8 +849,8 @@
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const todayStr = getTodayString();
 
-        const closingDay = parseInt(localStorage.getItem('risto_closing_day') || '2');
-        const closingShift = localStorage.getItem('risto_closing_shift') || 'cena';
+        const closingDay = parseInt(restaurantSettings.closing.day);
+        const closingShift = restaurantSettings.closing.shift;
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateObj = new Date(year, month, day); const dateString = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -847,11 +948,8 @@
         const blocks = document.querySelectorAll('.past-day-block');
         blocks.forEach(block => {
             const searchData = block.getAttribute('data-search');
-            if(searchData.includes(query)) {
-                block.style.display = 'block';
-            } else {
-                block.style.display = 'none';
-            }
+            if(searchData.includes(query)) { block.style.display = 'block'; } 
+            else { block.style.display = 'none'; }
         });
     };
 
@@ -888,21 +986,17 @@
             
             pastDates.sort((a,b) => b.localeCompare(a)).forEach(dateStr => {
                 let itaDate = new Date(dateStr).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
-                
                 pastHtml += `<div class="past-day-block list-group" data-search="${itaDate.toLowerCase()} ${dateStr}" style="margin-bottom: 16px; box-shadow:var(--shadow-sm);">
                     <div style="background: white; padding: 12px 20px; font-weight: 800; color: var(--primary); font-size: 1rem; border-bottom: 2px solid var(--border);">${itaDate}</div>
                     ${generateDayListHtml(grouped[dateStr])}
                 </div>`;
             });
-            
             pastHtml += `</div>`;
             pastContainer.innerHTML = pastHtml;
             container.appendChild(pastContainer);
         }
 
-        upcomingDates.forEach(dateStr => {
-            container.appendChild(createDateGroup(dateStr, grouped[dateStr], dateStr === todayStr, dateStr === todayStr));
-        });
+        upcomingDates.forEach(dateStr => { container.appendChild(createDateGroup(dateStr, grouped[dateStr], dateStr === todayStr, dateStr === todayStr)); });
     }
 
     function createDateGroup(dateStr, resArray, isOggi, forceOpen = false) {
@@ -917,7 +1011,11 @@
         return groupDiv;
     }
 
-    window.openFormModalForDay = function() { window.closeModals(); window.openFormModal(); if(selectedDayForNewRes) { document.getElementById('res-date').value = selectedDayForNewRes; window.checkClosedShift(); } };
+    window.openFormModalForDay = function() { 
+        if(!isAdmin && !restaurantSettings.perms.add) return alert("Non hai i permessi per aggiungere prenotazioni.");
+        window.closeModals(); window.openFormModal(); 
+        if(selectedDayForNewRes) { document.getElementById('res-date').value = selectedDayForNewRes; window.checkClosedShift(); } 
+    };
 
     window.openFormModal = function(id = null) {
         document.getElementById('reservationForm').reset();
@@ -927,7 +1025,7 @@
         const callBtn = document.getElementById('btn-call-phone');
         
         if (id) {
-            document.getElementById('form-title').innerText = "Modifica Prenotazione";
+            document.getElementById('form-title').innerText = "Dettagli Prenotazione";
             const r = reservations.find(res => res.id === id);
             if (r) {
                 document.getElementById('res-id').value = r.id; document.getElementById('res-date').value = r.date;
@@ -938,7 +1036,9 @@
                 document.getElementById('int-celiaco').value = r.intolerances.celiaco || 0;
                 document.getElementById('int-vegetariano').value = r.intolerances.vegetariano || 0;
                 document.getElementById('int-vegano').value = r.intolerances.vegano || 0;
-                document.getElementById('btn-delete').style.display = 'block';
+                
+                // Mostra il tasto elimina in base ai permessi
+                document.getElementById('btn-delete').style.display = (isAdmin || restaurantSettings.perms.delete) ? 'block' : 'none';
                 
                 callBtn.style.display = r.phone ? 'flex' : 'none';
                 
@@ -946,6 +1046,7 @@
                 if(r.intolerances.celiaco > 0 || r.intolerances.vegetariano > 0 || r.intolerances.vegano > 0) window.toggleSection('menu-section', document.getElementById('btn-toggle-menu'));
             }
         } else {
+            if(!isAdmin && !restaurantSettings.perms.add) return alert("Non hai i permessi per aggiungere prenotazioni.");
             document.getElementById('form-title').innerText = "Nuova Prenotazione";
             callBtn.style.display = 'none';
             if(!selectedDayForNewRes) document.getElementById('res-date').value = getTodayString();
@@ -955,6 +1056,10 @@
 
     window.saveReservation = async function(e) {
         e.preventDefault();
+        
+        const isEditing = document.getElementById('res-id').value !== '';
+        if (isEditing && !isAdmin && !restaurantSettings.perms.edit) return alert("Non hai i permessi per modificare.");
+        if (!isEditing && !isAdmin && !restaurantSettings.perms.add) return alert("Non hai i permessi per aggiungere.");
         if (!currentRestaurantId) return alert("Errore: Ristorante non identificato.");
         
         const btnSalva = document.getElementById('btn-submit-save'); 
@@ -988,35 +1093,27 @@
             window.closeModals(); 
             selectedDayForNewRes = null; 
         } 
-        catch (error) { 
-            alert("Errore durante il salvataggio. Verifica le regole Firebase."); 
-            console.error(error);
-        } 
-        finally { 
-            btnSalva.disabled = false; 
-            btnSalva.innerText = "💾 Salva Prenotazione"; 
-        }
+        catch (error) { alert("Errore durante il salvataggio."); console.error(error); } 
+        finally { btnSalva.disabled = false; btnSalva.innerText = "💾 Salva"; }
     };
 
     window.deleteReservation = async function() {
+        if(!isAdmin && !restaurantSettings.perms.delete) return alert("Non hai i permessi per eliminare prenotazioni.");
         const id = document.getElementById('res-id').value;
         if (!id || !currentRestaurantId) return;
         
         if (confirm("Sei sicuro di voler eliminare definitivamente questa prenotazione?")) {
             const btnDelete = document.getElementById('btn-delete');
-            btnDelete.disabled = true;
-            btnDelete.innerText = "⏳ Eliminazione...";
+            btnDelete.disabled = true; btnDelete.innerText = "⏳ Eliminazione...";
 
             try {
                 await deleteDoc(doc(db, "ristoranti", currentRestaurantId, "prenotazioni", id));
                 window.closeModals();
-                alert("Prenotazione eliminata.");
             } catch (error) {
                 console.error(error);
-                alert("Errore! Impossibile eliminare. Verifica le regole Firebase.");
+                alert("Errore! Impossibile eliminare.");
             } finally {
-                btnDelete.disabled = false;
-                btnDelete.innerText = "🗑 Elimina";
+                btnDelete.disabled = false; btnDelete.innerText = "🗑 Elimina";
             }
         }
     };
