@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <title>Gestione Prenotazioni Ristorante</title>
+    <title>RistoGest Pro</title>
     <style>
         :root {
             --primary: #0f172a;       
@@ -478,7 +478,7 @@
     import { getFirestore, collection, onSnapshot, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-    // --- INSERISCI QUI LE TUE CHIAVI FIREBASE SE HAI CREATO IL NUOVO PROGETTO ---
+    // LE TUE CHIAVI FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyD_JLRWYDGbod9sAtotDLzBYAvg1js40_I",
         authDomain: "ristorante-italo.firebaseapp.com",
@@ -543,8 +543,9 @@
 
         signInWithEmailAndPassword(auth, email, pwd)
             .then(() => { btnLogin.innerText = "ACCEDI"; btnLogin.disabled = false; })
-            .catch(() => {
-                alert("Errore: Credenziali errate o utente inesistente.");
+            .catch((error) => {
+                alert("Blocco Firebase: " + error.message);
+                console.error(error);
                 btnLogin.innerText = "ACCEDI"; btnLogin.disabled = false;
             });
     };
@@ -565,7 +566,7 @@
                 btnRegister.innerText = "CREA ACCOUNT"; btnRegister.disabled = false;
             })
             .catch((error) => {
-                let msg = "Errore durante la registrazione.";
+                let msg = "Errore durante la registrazione: " + error.message;
                 if (error.code === 'auth/email-already-in-use') msg = "Questa email è già in uso. Prova ad accedere.";
                 if (error.code === 'auth/invalid-email') msg = "L'email inserita non è valida.";
                 alert(msg);
@@ -581,7 +582,7 @@
             .then(() => alert("Email inviata! Controlla la tua posta in arrivo (e lo Spam)."))
             .catch((error) => {
                 if(error.code === 'auth/user-not-found') alert("Questa email non risulta registrata.");
-                else alert("Errore durante l'invio.");
+                else alert("Errore durante l'invio: " + error.message);
             });
     };
 
@@ -593,35 +594,41 @@
     async function loadSettingsAndReservations() {
         if (!currentRestaurantId) return;
         
-        // 1. Carica prima le impostazioni
-        const settingsDoc = await getDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"));
-        if(settingsDoc.exists()) {
-            restaurantSettings = settingsDoc.data();
-        } else {
-            // Se non esistono, le salva sul cloud per la prima volta
-            await setDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"), restaurantSettings);
-        }
-        
-        applyPermissionsToUI();
-
-        // 2. Carica le prenotazioni
-        const dbPath = collection(db, "ristoranti", currentRestaurantId, "prenotazioni");
-        unsubscribeSnapshot = onSnapshot(dbPath, (snapshot) => {
-            reservations = [];
-            snapshot.forEach((doc) => { reservations.push({ id: doc.id, ...doc.data() }); });
-            renderCalendar(); renderList();
-            
-            if(!initialLoadDone) { 
-                document.getElementById('loading-overlay').style.display = 'none'; 
-                window.toggleView('calendar', document.getElementById('btn-cal')); 
-                initialLoadDone = true; 
-            } 
-            else if (document.getElementById('dayModal').style.display === 'block' && selectedDayForNewRes) { 
-                window.openDayModal(selectedDayForNewRes); 
+        try {
+            // 1. Carica prima le impostazioni
+            const settingsDoc = await getDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"));
+            if(settingsDoc.exists()) {
+                restaurantSettings = settingsDoc.data();
+            } else {
+                // Se non esistono, le salva sul cloud per la prima volta
+                await setDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"), restaurantSettings);
             }
-        }, (error) => { 
-            document.getElementById('loading-overlay').innerText = "Errore connessione DB."; 
-        });
+            
+            applyPermissionsToUI();
+
+            // 2. Carica le prenotazioni
+            const dbPath = collection(db, "ristoranti", currentRestaurantId, "prenotazioni");
+            unsubscribeSnapshot = onSnapshot(dbPath, (snapshot) => {
+                reservations = [];
+                snapshot.forEach((doc) => { reservations.push({ id: doc.id, ...doc.data() }); });
+                renderCalendar(); renderList();
+                
+                if(!initialLoadDone) { 
+                    document.getElementById('loading-overlay').style.display = 'none'; 
+                    window.toggleView('calendar', document.getElementById('btn-cal')); 
+                    initialLoadDone = true; 
+                } 
+                else if (document.getElementById('dayModal').style.display === 'block' && selectedDayForNewRes) { 
+                    window.openDayModal(selectedDayForNewRes); 
+                }
+            }, (error) => { 
+                document.getElementById('loading-overlay').innerText = "Errore connessione DB. Controlla le regole."; 
+                console.error("Errore onSnapshot:", error);
+            });
+        } catch (error) {
+            console.error("Errore critico in loadSettingsAndReservations:", error);
+            document.getElementById('loading-overlay').innerText = "Accesso negato. Aggiorna le regole di Firebase."; 
+        }
     }
 
     // --- LOGICA MODALITA' ADMIN E PERMESSI ---
@@ -675,17 +682,15 @@
         if(!currentRestaurantId) return;
         try {
             await setDoc(doc(db, "ristoranti", currentRestaurantId, "impostazioni", "configurazione"), restaurantSettings);
-        } catch(e) { console.error("Errore salvataggio impostazioni", e); }
+        } catch(e) { console.error("Errore salvataggio impostazioni", e); alert("Errore nel salvataggio impostazioni."); }
     }
 
     function applyPermissionsToUI() {
-        // Tasti di aggiunta (Main header e Modal giorno)
         const canAdd = isAdmin || restaurantSettings.perms.add;
         document.getElementById('main-add-btn').style.display = canAdd ? 'flex' : 'none';
         const dayBtn = document.getElementById('day-add-btn');
         if(dayBtn) dayBtn.style.display = canAdd ? 'block' : 'none';
 
-        // Tasto di modifica salvataggio
         const canEdit = isAdmin || restaurantSettings.perms.edit;
         document.getElementById('btn-submit-save').disabled = !canEdit;
         if(!canEdit) document.getElementById('btn-submit-save').innerText = "Modifica Disabilitata";
@@ -731,7 +736,6 @@
         dlAnchorElem.setAttribute("download", "ristogest_backup_" + getTodayString() + ".json");
         dlAnchorElem.click();
     };
-
 
     window.checkClosedShift = function() {
         const dateVal = document.getElementById('res-date').value;
@@ -1093,7 +1097,7 @@
             window.closeModals(); 
             selectedDayForNewRes = null; 
         } 
-        catch (error) { alert("Errore durante il salvataggio."); console.error(error); } 
+        catch (error) { alert("Errore durante il salvataggio: " + error.message); console.error(error); } 
         finally { btnSalva.disabled = false; btnSalva.innerText = "💾 Salva"; }
     };
 
@@ -1111,7 +1115,7 @@
                 window.closeModals();
             } catch (error) {
                 console.error(error);
-                alert("Errore! Impossibile eliminare.");
+                alert("Errore! Impossibile eliminare: " + error.message);
             } finally {
                 btnDelete.disabled = false; btnDelete.innerText = "🗑 Elimina";
             }
